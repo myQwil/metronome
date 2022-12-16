@@ -1,2 +1,2 @@
 # metronome
-metronome made with libpd and Qt
+metronome made with libpd, SDL, and Qt
