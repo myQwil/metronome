@@ -32,14 +32,15 @@ const char *MainWindow::initAudio()
 		return SDL_GetError();
 	}
 	SDL_AudioSpec want = {};
-	want.freq = 48000;
+	SDL_GetDefaultAudioInfo(NULL, &have, 0);
+	want.freq = have.freq;
 	want.format = AUDIO_F32;
 	want.channels = 2;
 	want.samples = samples;
 	want.callback = callback;
 	want.userdata = &pd;
 
-	dev = SDL_OpenAudioDevice(NULL, 0, &want, &have, SDL_AUDIO_ALLOW_FREQUENCY_CHANGE);
+	dev = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
 	if (!dev) {
 		return SDL_GetError();
 	}
