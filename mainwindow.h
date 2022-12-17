@@ -2,9 +2,9 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QLineEdit>
 #include <SDL2/SDL.h>
 #include <PdBase.hpp>
+#include "slide.h"
 
 class Receiver : public pd::PdReceiver
 {
@@ -28,14 +28,19 @@ public:
 
 private slots:
 	void tempo_show();
-	void tempo_press(int met);
+	void tempo_push(real mpb);
 	void on_btnSlow_pressed();
 	void on_btnMedm_pressed();
 	void on_btnFast_pressed();
+	void on_btnReset_pressed();
 	void on_chkPause_stateChanged(int paused);
 
-	void sldTempo_valueChanged(int value);
+	void on_numVolume_returnPressed();
+	void on_numTempo_returnPressed();
+	void on_numBPM_returnPressed();
+
 	void sldVolume_valueChanged(int value);
+	void sldTempo_valueChanged(int value);
 
 	void spnAccent_valueChanged(int i);
 	void spnSubacc_valueChanged(int i);
@@ -53,6 +58,7 @@ private:
 	std::string dest_vol;
 	std::string dest_play;
 	std::string dest_met;
+	std::string dest_set;
 	std::string dest_accent;
 	std::string dest_subacc;
 };

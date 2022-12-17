@@ -14,7 +14,7 @@
    <string>Metronome</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QGridLayout" name="gridLayout" rowstretch="0,6,0,6,0,0,0,0,0,0">
+   <layout class="QGridLayout" name="gridLayout" rowstretch="0,0,1,0,1,0,0,0,0,0">
     <item row="0" column="0" alignment="Qt::AlignHCenter">
      <widget class="QLabel" name="lblTempo">
       <property name="text">
@@ -22,15 +22,15 @@
       </property>
      </widget>
     </item>
-    <item row="1" column="0" rowspan="7" alignment="Qt::AlignHCenter">
+    <item row="1" column="0" rowspan="8" alignment="Qt::AlignHCenter">
      <widget class="QSlider" name="sldTempo">
       <property name="orientation">
        <enum>Qt::Vertical</enum>
       </property>
      </widget>
     </item>
-    <item row="8" column="0" alignment="Qt::AlignHCenter">
-     <widget class="QLabel" name="numTempo">
+    <item row="9" column="0" alignment="Qt::AlignHCenter">
+     <widget class="QLineEdit" name="numTempo">
       <property name="font">
        <font>
         <family>Monospace</family>
@@ -38,6 +38,9 @@
       </property>
       <property name="text">
        <string>1000</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
       </property>
      </widget>
     </item>
@@ -49,7 +52,7 @@
      </widget>
     </item>
     <item row="1" column="1" alignment="Qt::AlignHCenter|Qt::AlignTop">
-     <widget class="QLabel" name="numBPM">
+     <widget class="QLineEdit" name="numBPM">
       <property name="font">
        <font>
         <family>Monospace</family>
@@ -57,6 +60,9 @@
       </property>
       <property name="text">
        <string>60</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
       </property>
      </widget>
     </item>
@@ -67,15 +73,15 @@
       </property>
      </widget>
     </item>
-    <item row="1" column="2" rowspan="7" alignment="Qt::AlignHCenter">
+    <item row="1" column="2" rowspan="8" alignment="Qt::AlignHCenter">
      <widget class="QSlider" name="sldVolume">
       <property name="orientation">
        <enum>Qt::Vertical</enum>
       </property>
      </widget>
     </item>
-    <item row="8" column="2" alignment="Qt::AlignHCenter">
-     <widget class="QLabel" name="numVolume">
+    <item row="9" column="2" alignment="Qt::AlignHCenter">
+     <widget class="QLineEdit" name="numVolume">
       <property name="font">
        <font>
         <family>Monospace</family>
@@ -84,26 +90,36 @@
       <property name="text">
        <string>0.35</string>
       </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
      </widget>
     </item>
-    <item row="2" column="1" alignment="Qt::AlignHCenter">
+    <item row="2" column="1" alignment="Qt::AlignTop">
+     <widget class="QPushButton" name="btnReset">
+      <property name="text">
+       <string>Reset</string>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="1" alignment="Qt::AlignHCenter">
      <widget class="QLabel" name="lblPause">
       <property name="text">
        <string>Pause</string>
       </property>
      </widget>
     </item>
-    <item row="3" column="1" alignment="Qt::AlignHCenter|Qt::AlignTop">
+    <item row="4" column="1" alignment="Qt::AlignHCenter|Qt::AlignTop">
      <widget class="QCheckBox" name="chkPause"/>
     </item>
-    <item row="4" column="1" alignment="Qt::AlignHCenter|Qt::AlignBottom">
+    <item row="5" column="1" alignment="Qt::AlignHCenter|Qt::AlignBottom">
      <widget class="QLabel" name="lblAccent">
       <property name="text">
        <string>Accent</string>
       </property>
      </widget>
     </item>
-    <item row="5" column="1">
+    <item row="6" column="1">
      <widget class="QSpinBox" name="spnAccent">
       <property name="minimum">
        <number>1</number>
@@ -113,14 +129,14 @@
       </property>
      </widget>
     </item>
-    <item row="6" column="1" alignment="Qt::AlignHCenter|Qt::AlignBottom">
+    <item row="7" column="1" alignment="Qt::AlignHCenter|Qt::AlignBottom">
      <widget class="QLabel" name="lblSubacc">
       <property name="text">
        <string>Sub-Accent</string>
       </property>
      </widget>
     </item>
-    <item row="7" column="1">
+    <item row="8" column="1">
      <widget class="QSpinBox" name="spnSubacc">
       <property name="minimum">
        <number>1</number>
@@ -130,21 +146,21 @@
       </property>
      </widget>
     </item>
-    <item row="9" column="0">
+    <item row="10" column="0">
      <widget class="QPushButton" name="btnSlow">
       <property name="text">
        <string>1000</string>
       </property>
      </widget>
     </item>
-    <item row="9" column="1">
+    <item row="10" column="1">
      <widget class="QPushButton" name="btnMedm">
       <property name="text">
        <string>875</string>
       </property>
      </widget>
     </item>
-    <item row="9" column="2">
+    <item row="10" column="2">
      <widget class="QPushButton" name="btnFast">
       <property name="text">
        <string>750</string>

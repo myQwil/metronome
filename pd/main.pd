@@ -58,6 +58,7 @@
 #X msg 280 170 12 3.5;
 #X msg 230 170 24 1;
 #X msg 30 170 1 48;
+#X obj 90 20 inlet;
 #X connect 0 0 2 0;
 #X connect 1 0 3 0;
 #X connect 1 0 6 0;
@@ -85,6 +86,7 @@
 #X connect 19 0 17 0;
 #X connect 20 0 17 0;
 #X connect 21 0 14 0;
+#X connect 22 0 2 1;
 #X restore 40 150 pd velocity;
 #X msg 40 20 750;
 #X msg 120 20 1000;
@@ -102,6 +104,8 @@
 #X obj 230 150 s \$0accent;
 #X msg 230 90 12;
 #X obj 40 190 ad 1.5;
+#X obj 110 90 t f f;
+#X obj 160 50 r \$0set;
 #X connect 0 0 3 0;
 #X connect 2 0 0 1;
 #X connect 3 0 1 0;
@@ -116,13 +120,16 @@
 #X connect 10 0 7 0;
 #X connect 11 0 7 0;
 #X connect 12 0 15 0;
-#X connect 13 0 8 1;
+#X connect 13 0 8 2;
 #X connect 14 0 8 0;
 #X connect 15 0 14 0;
-#X connect 16 0 8 2;
+#X connect 16 0 8 3;
 #X connect 17 0 21 0;
 #X connect 18 0 20 0;
 #X connect 20 0 19 0;
 #X connect 21 0 22 0;
 #X connect 23 0 21 0;
 #X connect 24 0 0 0;
+#X connect 25 0 14 1;
+#X connect 25 1 8 1;
+#X connect 26 0 25 0;

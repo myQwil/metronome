@@ -1,14 +1,21 @@
 #include <cmath>
 
-static const int steps = 2048;
+static const int run = 2048;
+typedef float real;
 
-struct Slide
+class Slide
 {
-	double k;
-	double min;
-	double val;
+private:
+	real m;
+	real b;
 	bool islog;
-	Slide(double min, double max, double val, bool islog=true)
+
+public:
+	real min;
+	real max;
+	real val;
+
+	Slide(real min, real max, real val, bool islog=true)
 	{
 		this->val = val;
 		this->islog = islog;
@@ -25,28 +32,36 @@ struct Slide
 					max = 0.01 * min;
 				}
 			}
-			k = log(max / min) / steps;
+			m = log(max / min) / run;
 		} else {
-			k =    (max - min) / steps;
+			m =    (max - min) / run;
+		}
+		this->b = min;
+
+		if (min > max) {
+			real temp = min;
+			min = max;
+			max = temp;
 		}
 		this->min = min;
+		this->max = max;
 	}
 
-	double fromstep(int step)
+	real fromstep(int x)
 	{
 		if (islog) {
-			return exp(k * step) * min;
+			return exp(m * x) * b;
 		} else {
-			return     k * step  + min;
+			return     m * x  + b;
 		}
 	}
 
 	int tostep()
 	{
 		if (islog) {
-			return (int)(log(val / min) / k);
+			return (int)(log(val / b) / m);
 		} else {
-			return (int)(   (val - min) / k);
+			return (int)(   (val - b) / m);
 		}
 	}
 };

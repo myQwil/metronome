@@ -1,6 +1,5 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "slide.h"
 
 using namespace pd;
 
@@ -14,7 +13,7 @@ Slide tempo  = Slide(2000, 20, 1000); // tempo slider parameters
 int accent = 12; // number of beats between accented beats
 int subacc = 4;  // number of beats between sub-accented beats
 
-static inline QString fmt(qreal num)
+static inline QString fmt(real num)
 {
 	int precision = 5 - QString::number((int)num).length();
 	return QString::number(num, 'f', precision);
@@ -58,6 +57,7 @@ const char *MainWindow::initAudio()
 	dest_vol    = dlr + "vol";
 	dest_play   = dlr + "play";
 	dest_met    = dlr + "met";
+	dest_set    = dlr + "set";
 	dest_accent = dlr + "accent";
 	dest_subacc = dlr + "sub";
 
@@ -81,23 +81,33 @@ MainWindow::MainWindow(QWidget *parent)
 
 	ui->setupUi(this);
 
-	ui->sldTempo->setMaximum(steps);
-	ui->sldTempo->setValue(tempo.tostep());
-	connect(ui->sldTempo, SIGNAL(valueChanged(int))
-		, this, SLOT(sldTempo_valueChanged(int)));
-	ui->numTempo->setText(fmt(tempo.val));
-	ui->numBPM->setText(fmt(60000 / tempo.val));
-
-	ui->sldVolume->setMaximum(steps);
+	ui->sldVolume->setMaximum(run);
 	ui->sldVolume->setValue(volume.tostep());
 	connect(ui->sldVolume, SIGNAL(valueChanged(int))
 		, this, SLOT(sldVolume_valueChanged(int)));
+
+	ui->sldTempo->setMaximum(run);
+	ui->sldTempo->setValue(tempo.tostep());
+	connect(ui->sldTempo, SIGNAL(valueChanged(int))
+		, this, SLOT(sldTempo_valueChanged(int)));
+
 	ui->numVolume->setText(fmt(volume.val));
+	ui->numVolume->setValidator(
+		new QDoubleValidator(volume.min, volume.max, -1, this));
+
+	ui->numTempo->setText(fmt(tempo.val));
+	ui->numTempo->setValidator(
+		new QDoubleValidator(tempo.min, tempo.max, -1, this));
+
+	ui->numBPM->setText(fmt(60000 / tempo.val));
+	ui->numBPM->setValidator(
+		new QDoubleValidator(60000/tempo.max, 60000/tempo.min, -1, this));
 
 	ui->spnAccent->setValue(accent);
-	ui->spnSubacc->setValue(subacc);
 	connect(ui->spnAccent, SIGNAL(valueChanged(int))
 		, this, SLOT(spnAccent_valueChanged(int)), Qt::QueuedConnection);
+
+	ui->spnSubacc->setValue(subacc);
 	connect(ui->spnSubacc, SIGNAL(valueChanged(int))
 		, this, SLOT(spnSubacc_valueChanged(int)), Qt::QueuedConnection);
 }
@@ -105,7 +115,6 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
 	delete ui;
-
 	pd.closePatch(patch);
 	pd.computeAudio(false);
 }
@@ -117,29 +126,36 @@ void MainWindow::tempo_show()
 	ui->numBPM->setText(fmt(60000 / tempo.val));
 }
 
-void MainWindow::tempo_press(int met)
+void MainWindow::tempo_push(real mpb)
 {
-	tempo.val = met;
+	tempo.val = mpb;
 	pd.sendFloat(dest_met, tempo.val);
 	ui->sldTempo->blockSignals(true);
 	ui->sldTempo->setValue(tempo.tostep());
 	ui->sldTempo->blockSignals(false);
-	tempo_show();
 }
 
 void MainWindow::on_btnSlow_pressed()
 {
-	tempo_press(1000);
+	tempo_push(1000);
+	tempo_show();
 }
 
 void MainWindow::on_btnMedm_pressed()
 {
-	tempo_press(875);
+	tempo_push(875);
+	tempo_show();
 }
 
 void MainWindow::on_btnFast_pressed()
 {
-	tempo_press(750);
+	tempo_push(750);
+	tempo_show();
+}
+
+void MainWindow::on_btnReset_pressed()
+{
+	pd.sendFloat(dest_set, 0);
 }
 
 void MainWindow::on_chkPause_stateChanged(int paused)
@@ -152,11 +168,30 @@ void MainWindow::on_chkPause_stateChanged(int paused)
 	}
 }
 
-void MainWindow::sldTempo_valueChanged(int step)
+void MainWindow::on_numVolume_returnPressed()
 {
-	tempo.val = tempo.fromstep(step);
-	pd.sendFloat(dest_met, tempo.val);
+	volume.val = ui->numVolume->text().toFloat();
+	pd.sendFloat(dest_vol, volume.val);
+	ui->sldVolume->blockSignals(true);
+	ui->sldVolume->setValue(volume.tostep());
+	ui->sldVolume->blockSignals(false);
+	ui->numVolume->setText(fmt(volume.val));
+}
+
+void MainWindow::on_numTempo_returnPressed()
+{
+	real mpb = ui->numTempo->text().toFloat();
+	tempo_push(mpb);
 	tempo_show();
+}
+
+void MainWindow::on_numBPM_returnPressed()
+{
+	real bpm = ui->numBPM->text().toFloat();
+	real mpb = 60000 / bpm;
+	tempo_push(mpb);
+	ui->numTempo->setText(fmt(mpb));
+	ui->numBPM->setText(fmt(bpm));
 }
 
 void MainWindow::sldVolume_valueChanged(int step)
@@ -164,6 +199,13 @@ void MainWindow::sldVolume_valueChanged(int step)
 	volume.val = (step > 0) ? volume.fromstep(step) : 0;
 	pd.sendFloat(dest_vol, volume.val);
 	ui->numVolume->setText(fmt(volume.val));
+}
+
+void MainWindow::sldTempo_valueChanged(int step)
+{
+	tempo.val = tempo.fromstep(step);
+	pd.sendFloat(dest_met, tempo.val);
+	tempo_show();
 }
 
 void MainWindow::spnAccent_valueChanged(int i)
