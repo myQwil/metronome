@@ -1,8 +1,8 @@
-project('metronome', 'cpp', default_options : ['cpp_std=c++11'])
+project('metronome', 'cpp'
+	, version : '0.1'
+	, default_options : ['warning_level=3'
+	                   , 'cpp_std=c++14'])
 
-# Documentation: https://mesonbuild.com/Qt5-module.html
-qt5 = import('qt5')
-qt5dep = dependency('qt5', modules : ['Core', 'Widgets'])
 sdl2_dep = dependency('sdl2')
 
 libpd_dir = '/home/mike/z/libpd'
@@ -16,14 +16,16 @@ libpd_dep = declare_dependency(
 	  link_args : [libpd_dir + '/libs/libpd.a']
 	, include_directories : include_directories(libpd_include))
 
+# Documentation: https://mesonbuild.com/Qt5-module.html
+qt5 = import('qt5')
+qt5dep = dependency('qt5', modules : ['Core', 'Widgets'])
 generated_files = qt5.preprocess(
 	  moc_headers : 'mainwindow.h'
 	, ui_files : 'mainwindow.ui'
 	, dependencies : [qt5dep])
 
-executable('metronome'
-	, 'main.cpp'
-	, 'mainwindow.cpp'
-	, generated_files
-	, dependencies : [qt5dep, sdl2_dep, libpd_dep]
+exe = executable('metronome', ['main.cpp', 'mainwindow.cpp', generated_files]
+	, dependencies : [sdl2_dep, libpd_dep, qt5dep]
 	, install : true)
+
+test('basic', exe)
