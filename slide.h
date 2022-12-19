@@ -8,16 +8,19 @@ class Slide
 private:
 	real m;
 	real b;
+	real min_;
+	real max_;
 	bool islog;
 
 public:
-	real min;
-	real max;
 	real val;
+	real min() { return min_; }
+	real max() { return max_; }
+
+	Slide() {}
 
 	Slide(real min, real max, real val, bool islog=true)
 	{
-		this->val = val;
 		this->islog = islog;
 		if (islog) {
 			if (min == 0.0 && max == 0.0) {
@@ -43,8 +46,9 @@ public:
 			min = max;
 			max = temp;
 		}
-		this->min = min;
-		this->max = max;
+		this->min_ = min;
+		this->max_ = max;
+		this->val = val < min ? min : (val > max ? max : val);
 	}
 
 	real fromstep(int x)

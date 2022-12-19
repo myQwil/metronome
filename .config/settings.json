@@ -1,0 +1,19 @@
+{
+	"accent1": 12, // number of beats between accents
+	"accent2": 4,  // number of beats between sub-accents
+
+	// there are 3 buttons for assigning tempo presets
+	// tempo is expressed in milliseconds per beat
+	// "preset1": 1000,
+	// "preset2": 875,
+	// "preset3": 750,
+
+	"volume": 0.35, // initial volume level (linear amplitude)
+	// "patch": "pd/sine.pd",
+	// "tempo": {
+		// "min": 2000, // minimum value
+		// "max": 20,   // maximum value
+		// "val": 1000, // starting value
+		// "log": true, // logarithmic scaling. default state is true
+	// }
+}

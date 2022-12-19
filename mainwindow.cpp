@@ -1,5 +1,8 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include <json/json.h>
+#include <fstream>
+#include <QDir>
 
 using namespace pd;
 
@@ -8,10 +11,10 @@ enum {
 	, ticks = samples / 64
 };
 
-Slide volume = Slide(0.001, 1, 0.35); // volume slider parameters
-Slide tempo  = Slide(2000, 20, 1000); // tempo slider parameters
-int accent = 12; // number of beats between accented beats
-int subacc = 4;  // number of beats between sub-accented beats
+static inline void fail(const char *err) {
+	std::cerr << err << std::endl;
+	QApplication::quit();
+}
 
 static inline QString fmt(real num)
 {
@@ -25,13 +28,65 @@ static void callback(void *userdata, Uint8 *stream, int)
 	pd->processFloat(ticks, nullptr, (float *)stream);
 }
 
-const char *MainWindow::initAudio()
+
+MainWindow::MainWindow(QWidget *parent)
+	: QMainWindow(parent)
+	, ui(new Ui::MainWindow)
 {
-	if (SDL_Init(SDL_INIT_AUDIO) < 0) {
-		return SDL_GetError();
+	std::string home = QDir::homePath().toStdString();
+	std::string path = home + "/.config/metronome/";
+
+	// default settings
+	int accent1 = 4, accent2 = 2;
+	preset1 = 1000, preset2 = 875, preset3 = 750;
+	real t_min = 2000, t_max = 20, t_val = 1000;
+	bool t_log = true;
+	real vol = 0.1;
+	std::string file = path + "pd/hihat.pd";
+
+	// user settings
+	Json::Value root;
+	JSONCPP_STRING err;
+	Json::CharReaderBuilder builder;
+	std::ifstream ifs(path + "settings.json");
+	parseFromStream(builder, ifs, &root, &err);
+	if (root["accent1"]) accent1 = root["accent1"].asInt();
+	if (root["accent2"]) accent2 = root["accent2"].asInt();
+	if (root["preset1"]) preset1 = root["preset1"].asFloat();
+	if (root["preset2"]) preset2 = root["preset2"].asFloat();
+	if (root["preset3"]) preset3 = root["preset3"].asFloat();
+	if (root["volume"]) vol = root["volume"].asFloat();
+	if (root["patch"]) {
+		file = root["patch"].asString();
+		if (file.at(0) == '~') { // home path
+			file = home + file.substr(1);
+		} else if (file.at(0) != '/') { // relative path
+			file = path + file;
+		}
 	}
-	SDL_AudioSpec want = {};
+	if (root["tempo"]) {
+		if (root["tempo"]["min"]) {
+			t_min = root["tempo"]["min"].asFloat();
+			if (t_min < 1) t_min = 1;
+		}
+		if (root["tempo"]["max"]) {
+			t_max = root["tempo"]["max"].asFloat();
+			if (t_max < 1) t_max = 1;
+		}
+		if (root["tempo"]["val"]) t_val = root["tempo"]["val"].asFloat();
+		if (root["tempo"]["log"]) t_log = root["tempo"]["log"].asFloat();
+	}
+	volume = Slide(0.001, 1, vol);
+	tempo  = Slide(t_min, t_max, t_val, t_log);
+
+	// initialize audio
+
+	if (SDL_Init(SDL_INIT_AUDIO) < 0) {
+		fail(SDL_GetError());
+	}
+
 	SDL_GetDefaultAudioInfo(NULL, &have, 0);
+	SDL_AudioSpec want = {};
 	want.freq = have.freq;
 	want.format = AUDIO_F32;
 	want.channels = 2;
@@ -41,45 +96,38 @@ const char *MainWindow::initAudio()
 
 	dev = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
 	if (!dev) {
-		return SDL_GetError();
+		SDL_CloseAudio();
+		fail(SDL_GetError());
 	}
-	SDL_PauseAudioDevice(dev, 0);
-
 	if (!pd.init(0, have.channels, have.freq)) {
 		SDL_CloseAudioDevice(dev);
-		return "Error initializing pd.";
+		SDL_CloseAudio();
+		fail("Error initializing pd.");
 	}
 	pd.setReceiver(&rec);
-	QString path = QCoreApplication::applicationDirPath() + "/../pd";
-	patch = pd.openPatch("main.pd", path.toStdString());
 
+	std::size_t end = file.find_last_of("/\\");
+	patch = pd.openPatch(file.substr(end + 1), file.substr(0, end));
 	const std::string dlr = patch.dollarZeroStr();
-	dest_vol    = dlr + "vol";
-	dest_play   = dlr + "play";
-	dest_met    = dlr + "met";
-	dest_set    = dlr + "set";
-	dest_accent = dlr + "accent";
-	dest_subacc = dlr + "sub";
+	dest_vol     = dlr + "vol";
+	dest_play    = dlr + "play";
+	dest_beat    = dlr + "beat";
+	dest_tempo   = dlr + "tempo";
+	dest_accent1 = dlr + "accent1";
+	dest_accent2 = dlr + "accent2";
 
-	pd.sendFloat(dest_accent, accent);
-	pd.sendFloat(dest_subacc, subacc);
+	pd.sendFloat(dest_accent1, accent1);
+	pd.sendFloat(dest_accent2, accent2);
 	pd.sendFloat(dest_vol, volume.val);
-	pd.sendBang(dest_play);
-
-	return 0;
-}
-
-MainWindow::MainWindow(QWidget *parent)
-	: QMainWindow(parent)
-	, ui(new Ui::MainWindow)
-{
-	const char *err_msg = initAudio();
-	if (err_msg) {
-		std::cerr << err_msg << std::endl;
-		QApplication::quit();
-	}
+	pd.sendFloat(dest_play, tempo.val);
+	pd.computeAudio(true);
+	SDL_PauseAudioDevice(dev, 0);
 
 	ui->setupUi(this);
+
+	ui->btnPreset1->setText(QString::number(preset1));
+	ui->btnPreset2->setText(QString::number(preset2));
+	ui->btnPreset3->setText(QString::number(preset3));
 
 	ui->sldVolume->setMaximum(run);
 	ui->sldVolume->setValue(volume.tostep());
@@ -91,25 +139,24 @@ MainWindow::MainWindow(QWidget *parent)
 	connect(ui->sldTempo, SIGNAL(valueChanged(int))
 		, this, SLOT(sldTempo_valueChanged(int)));
 
-	ui->numVolume->setText(fmt(volume.val));
-	ui->numVolume->setValidator(
-		new QDoubleValidator(volume.min, volume.max, -1, this));
+	ui->edtVolume->setText(fmt(volume.val));
+	ui->edtVolume->setValidator(new QDoubleValidator(0, 1, -1, this));
 
-	ui->numTempo->setText(fmt(tempo.val));
-	ui->numTempo->setValidator(
-		new QDoubleValidator(tempo.min, tempo.max, -1, this));
+	ui->edtTempo->setText(fmt(tempo.val));
+	ui->edtTempo->setValidator(
+		new QDoubleValidator(tempo.min(), tempo.max(), -1, this));
 
-	ui->numBPM->setText(fmt(60000 / tempo.val));
-	ui->numBPM->setValidator(
-		new QDoubleValidator(60000/tempo.max, 60000/tempo.min, -1, this));
+	ui->edtBPM->setText(fmt(60000/tempo.val));
+	ui->edtBPM->setValidator(
+		new QDoubleValidator(60000/tempo.max(), 60000/tempo.min(), -1, this));
 
-	ui->spnAccent->setValue(accent);
-	connect(ui->spnAccent, SIGNAL(valueChanged(int))
-		, this, SLOT(spnAccent_valueChanged(int)), Qt::QueuedConnection);
+	ui->spnAccent1->setValue(accent1);
+	connect(ui->spnAccent1, SIGNAL(valueChanged(int))
+		, this, SLOT(spnAccent1_valueChanged(int)), Qt::QueuedConnection);
 
-	ui->spnSubacc->setValue(subacc);
-	connect(ui->spnSubacc, SIGNAL(valueChanged(int))
-		, this, SLOT(spnSubacc_valueChanged(int)), Qt::QueuedConnection);
+	ui->spnAccent2->setValue(accent2);
+	connect(ui->spnAccent2, SIGNAL(valueChanged(int))
+		, this, SLOT(spnAccent2_valueChanged(int)), Qt::QueuedConnection);
 }
 
 MainWindow::~MainWindow()
@@ -122,40 +169,40 @@ MainWindow::~MainWindow()
 
 void MainWindow::tempo_show()
 {
-	ui->numTempo->setText(fmt(tempo.val));
-	ui->numBPM->setText(fmt(60000 / tempo.val));
+	ui->edtTempo->setText(fmt(tempo.val));
+	ui->edtBPM->setText(fmt(60000 / tempo.val));
 }
 
 void MainWindow::tempo_push(real mpb)
 {
 	tempo.val = mpb;
-	pd.sendFloat(dest_met, tempo.val);
+	pd.sendFloat(dest_tempo, tempo.val);
 	ui->sldTempo->blockSignals(true);
 	ui->sldTempo->setValue(tempo.tostep());
 	ui->sldTempo->blockSignals(false);
 }
 
-void MainWindow::on_btnSlow_pressed()
+void MainWindow::on_btnPreset1_pressed()
 {
-	tempo_push(1000);
+	tempo_push(preset1);
 	tempo_show();
 }
 
-void MainWindow::on_btnMedm_pressed()
+void MainWindow::on_btnPreset2_pressed()
 {
-	tempo_push(875);
+	tempo_push(preset2);
 	tempo_show();
 }
 
-void MainWindow::on_btnFast_pressed()
+void MainWindow::on_btnPreset3_pressed()
 {
-	tempo_push(750);
+	tempo_push(preset3);
 	tempo_show();
 }
 
 void MainWindow::on_btnReset_pressed()
 {
-	pd.sendFloat(dest_set, 0);
+	pd.sendFloat(dest_beat, 0);
 }
 
 void MainWindow::on_chkPause_stateChanged(int paused)
@@ -168,54 +215,54 @@ void MainWindow::on_chkPause_stateChanged(int paused)
 	}
 }
 
-void MainWindow::on_numVolume_returnPressed()
+void MainWindow::on_edtVolume_returnPressed()
 {
-	volume.val = ui->numVolume->text().toFloat();
+	volume.val = ui->edtVolume->text().toFloat();
 	pd.sendFloat(dest_vol, volume.val);
 	ui->sldVolume->blockSignals(true);
 	ui->sldVolume->setValue(volume.tostep());
 	ui->sldVolume->blockSignals(false);
-	ui->numVolume->setText(fmt(volume.val));
+	ui->edtVolume->setText(fmt(volume.val));
 }
 
-void MainWindow::on_numTempo_returnPressed()
+void MainWindow::on_edtTempo_returnPressed()
 {
-	real mpb = ui->numTempo->text().toFloat();
+	real mpb = ui->edtTempo->text().toFloat();
 	tempo_push(mpb);
 	tempo_show();
 }
 
-void MainWindow::on_numBPM_returnPressed()
+void MainWindow::on_edtBPM_returnPressed()
 {
-	real bpm = ui->numBPM->text().toFloat();
+	real bpm = ui->edtBPM->text().toFloat();
 	real mpb = 60000 / bpm;
 	tempo_push(mpb);
-	ui->numTempo->setText(fmt(mpb));
-	ui->numBPM->setText(fmt(bpm));
+	ui->edtTempo->setText(fmt(mpb));
+	ui->edtBPM->setText(fmt(bpm));
 }
 
 void MainWindow::sldVolume_valueChanged(int step)
 {
 	volume.val = (step > 0) ? volume.fromstep(step) : 0;
 	pd.sendFloat(dest_vol, volume.val);
-	ui->numVolume->setText(fmt(volume.val));
+	ui->edtVolume->setText(fmt(volume.val));
 }
 
 void MainWindow::sldTempo_valueChanged(int step)
 {
 	tempo.val = tempo.fromstep(step);
-	pd.sendFloat(dest_met, tempo.val);
+	pd.sendFloat(dest_tempo, tempo.val);
 	tempo_show();
 }
 
-void MainWindow::spnAccent_valueChanged(int i)
+void MainWindow::spnAccent1_valueChanged(int i)
 {
-	pd.sendFloat(dest_accent, i);
-	ui->spnAccent->findChild<QLineEdit*>()->deselect();
+	pd.sendFloat(dest_accent1, i);
+	ui->spnAccent1->findChild<QLineEdit*>()->deselect();
 }
 
-void MainWindow::spnSubacc_valueChanged(int i)
+void MainWindow::spnAccent2_valueChanged(int i)
 {
-	pd.sendFloat(dest_subacc, i);
-	ui->spnSubacc->findChild<QLineEdit*>()->deselect();
+	pd.sendFloat(dest_accent2, i);
+	ui->spnAccent2->findChild<QLineEdit*>()->deselect();
 }
