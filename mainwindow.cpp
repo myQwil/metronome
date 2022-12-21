@@ -39,9 +39,9 @@ MainWindow::MainWindow(QWidget *parent)
 	, ui(new Ui::MainWindow)
 {
 	std::string home = QDir::homePath().toStdString();
-	QStringList conf = QStandardPaths::standardLocations
-		(QStandardPaths::ConfigLocation);
-	std::string path = conf[0].toStdString() + "/metronome/";
+	QStringList appdata =
+		QStandardPaths::standardLocations(QStandardPaths::AppDataLocation);
+	std::string path = appdata[0].toStdString();
 
 	// default settings
 	int accent1 = 4, accent2 = 2;
@@ -49,13 +49,13 @@ MainWindow::MainWindow(QWidget *parent)
 	real t_min = 2000, t_max = 20, t_val = 1000;
 	bool t_log = true;
 	real vol = 0.1;
-	std::string file = path + "pd/hihat.pd";
+	std::string file = path + "/hihat.pd";
 
 	// user settings
 	Json::Value root;
 	JSONCPP_STRING err;
 	Json::CharReaderBuilder builder;
-	std::ifstream ifs(path + "settings.json");
+	std::ifstream ifs(path + "/settings.json");
 	parseFromStream(builder, ifs, &root, &err);
 	if (root["accent1"]) accent1 = root["accent1"].asInt();
 	if (root["accent2"]) accent2 = root["accent2"].asInt();
@@ -68,7 +68,7 @@ MainWindow::MainWindow(QWidget *parent)
 		if (file.at(0) == '~') { // home path
 			file = home + file.substr(1);
 		} else if (file.at(0) != '/') { // relative path
-			file = path + file;
+			file = path + "/" + file;
 		}
 	}
 	if (root["tempo"]) {
