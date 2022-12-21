@@ -3,13 +3,17 @@
 #include <json/json.h>
 #include <fstream>
 #include <QDir>
+#include <QStandardPaths>
 
 using namespace pd;
 
 enum {
 	  samples = 1024
-	, ticks = samples / 64
+	, channels = 2
 };
+
+const static int exponent =
+	log( channels * sizeof(real) * pd::PdBase::blockSize() ) / M_LN2;
 
 static inline void fail(const char *err) {
 	std::cerr << err << std::endl;
@@ -22,10 +26,11 @@ static inline QString fmt(real num)
 	return QString::number(num, 'f', precision);
 }
 
-static void callback(void *userdata, Uint8 *stream, int)
+static void callback(void *pd, Uint8 *stream, int size)
 {
-	PdBase *pd = (PdBase *)userdata;
-	pd->processFloat(ticks, nullptr, (float *)stream);
+	if (size >= 512) {
+		((PdBase *)pd)->processFloat(size >> exponent, nullptr, (float *)stream);
+	}
 }
 
 
@@ -34,7 +39,9 @@ MainWindow::MainWindow(QWidget *parent)
 	, ui(new Ui::MainWindow)
 {
 	std::string home = QDir::homePath().toStdString();
-	std::string path = home + "/.config/metronome/";
+	QStringList conf = QStandardPaths::standardLocations
+		(QStandardPaths::ConfigLocation);
+	std::string path = conf[0].toStdString() + "/metronome/";
 
 	// default settings
 	int accent1 = 4, accent2 = 2;
@@ -89,7 +96,7 @@ MainWindow::MainWindow(QWidget *parent)
 	SDL_AudioSpec want = {};
 	want.freq = have.freq;
 	want.format = AUDIO_F32;
-	want.channels = 2;
+	want.channels = channels;
 	want.samples = samples;
 	want.callback = callback;
 	want.userdata = &pd;
