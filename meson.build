@@ -20,10 +20,9 @@ libpd_dep = declare_dependency(
 # Documentation: https://mesonbuild.com/Qt5-module.html
 qt5 = import('qt5')
 qt5_dep = dependency('qt5', modules : ['Core', 'Widgets'])
-generated_files = qt5.preprocess(
-	  moc_headers : 'mainwindow.h'
-	, ui_files : 'mainwindow.ui'
-	, dependencies : [qt5_dep])
+generated_files = qt5.preprocess(dependencies : [qt5_dep]
+	, moc_headers : 'mainwindow.h'
+	, ui_files : 'mainwindow.ui')
 
 exe = executable('metronome'
 	, ['main.cpp', 'mainwindow.cpp', generated_files]

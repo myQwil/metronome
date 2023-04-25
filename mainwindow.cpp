@@ -5,10 +5,9 @@
 #include <QDir>
 #include <QStandardPaths>
 
-using namespace pd;
-
 enum {
-	  samples = 1024
+	  freq = 48000
+	, samples = 1024
 	, channels = 2
 };
 
@@ -20,16 +19,14 @@ static inline void fail(const char *err) {
 	QApplication::quit();
 }
 
-static inline QString fmt(real num)
-{
+static inline QString fmt(real num) {
 	int precision = 5 - QString::number((int)num).length();
 	return QString::number(num, 'f', precision);
 }
 
-static void callback(void *pd, Uint8 *stream, int size)
-{
+static void callback(void *lpd, Uint8 *stream, int size) {
 	if (size >= 512) {
-		((PdBase *)pd)->processFloat(size >> exponent, nullptr, (float *)stream);
+		((pd::PdBase *)lpd)->processFloat(size >> exponent, nullptr, (float *)stream);
 	}
 }
 
@@ -38,7 +35,6 @@ MainWindow::MainWindow(QWidget *parent)
 	: QMainWindow(parent)
 	, ui(new Ui::MainWindow)
 {
-	std::string home = QDir::homePath().toStdString();
 	QStringList appdata =
 		QStandardPaths::standardLocations(QStandardPaths::AppDataLocation);
 	std::string path = appdata[0].toStdString();
@@ -66,7 +62,7 @@ MainWindow::MainWindow(QWidget *parent)
 	if (root["patch"]) {
 		file = root["patch"].asString();
 		if (file.at(0) == '~') { // home path
-			file = home + file.substr(1);
+			file = QDir::homePath().toStdString() + file.substr(1);
 		} else if (file.at(0) != '/') { // relative path
 			file = path + "/" + file;
 		}
@@ -91,30 +87,15 @@ MainWindow::MainWindow(QWidget *parent)
 	if (SDL_Init(SDL_INIT_AUDIO) < 0) {
 		fail(SDL_GetError());
 	}
-
-	SDL_GetDefaultAudioInfo(NULL, &have, 0);
-	SDL_AudioSpec want = {};
-	want.freq = have.freq;
-	want.format = AUDIO_F32;
-	want.channels = channels;
-	want.samples = samples;
-	want.callback = callback;
-	want.userdata = &pd;
-
-	dev = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
-	if (!dev) {
-		SDL_CloseAudio();
-		fail(SDL_GetError());
-	}
-	if (!pd.init(0, have.channels, have.freq)) {
+	if (!lpd.init(0, channels, freq)) {
 		SDL_CloseAudioDevice(dev);
 		SDL_CloseAudio();
 		fail("Error initializing pd.");
 	}
-	pd.setReceiver(&rec);
+	lpd.setReceiver(this);
 
 	std::size_t end = file.find_last_of("/\\");
-	patch = pd.openPatch(file.substr(end + 1), file.substr(0, end));
+	patch = lpd.openPatch(file.substr(end + 1), file.substr(0, end));
 	const std::string dlr = patch.dollarZeroStr();
 	dest_vol     = dlr + "vol";
 	dest_play    = dlr + "play";
@@ -123,12 +104,11 @@ MainWindow::MainWindow(QWidget *parent)
 	dest_accent1 = dlr + "accent1";
 	dest_accent2 = dlr + "accent2";
 
-	pd.sendFloat(dest_accent1, accent1);
-	pd.sendFloat(dest_accent2, accent2);
-	pd.sendFloat(dest_vol, volume.val);
-	pd.sendFloat(dest_play, tempo.val);
-	pd.computeAudio(true);
-	SDL_PauseAudioDevice(dev, 0);
+	lpd.sendFloat(dest_accent1, accent1);
+	lpd.sendFloat(dest_accent2, accent2);
+	lpd.sendFloat(dest_vol, volume.val);
+	lpd.sendFloat(dest_play, tempo.val);
+	startAudio();
 
 	ui->setupUi(this);
 
@@ -166,81 +146,89 @@ MainWindow::MainWindow(QWidget *parent)
 		, this, SLOT(spnAccent2_valueChanged(int)), Qt::QueuedConnection);
 }
 
-MainWindow::~MainWindow()
-{
+MainWindow::~MainWindow() {
 	delete ui;
-	pd.closePatch(patch);
-	pd.computeAudio(false);
+	lpd.closePatch(patch);
+	lpd.computeAudio(false);
+	SDL_CloseAudioDevice(dev);
+	SDL_CloseAudio();
 }
 
+void MainWindow::print(const std::string &message) {
+	std::cout << message << std::endl;
+}
 
-void MainWindow::tempo_show()
-{
+void MainWindow::startAudio() {
+	SDL_AudioSpec spec = {};
+	spec.freq = freq;
+	spec.format = AUDIO_F32;
+	spec.channels = channels;
+	spec.samples = samples;
+	spec.callback = callback;
+	spec.userdata = &lpd;
+	dev = SDL_OpenAudioDevice(NULL, 0, &spec, &spec, 0);
+	SDL_PauseAudioDevice(dev, 0);
+	lpd.computeAudio(true);
+}
+
+void MainWindow::stopAudio() {
+	lpd.computeAudio(false);
+	SDL_CloseAudioDevice(dev);
+	dev = 0;
+}
+
+void MainWindow::tempo_show() {
 	ui->edtTempo->setText(fmt(tempo.val));
 	ui->edtBPM->setText(fmt(60000 / tempo.val));
 }
 
-void MainWindow::tempo_push(real mpb)
-{
+void MainWindow::tempo_push(real mpb) {
 	tempo.val = mpb;
-	pd.sendFloat(dest_tempo, tempo.val);
+	lpd.sendFloat(dest_tempo, tempo.val);
 	ui->sldTempo->blockSignals(true);
 	ui->sldTempo->setValue(tempo.tostep());
 	ui->sldTempo->blockSignals(false);
 }
 
-void MainWindow::on_btnPreset1_pressed()
-{
+void MainWindow::on_btnPreset1_pressed() {
 	tempo_push(preset1);
 	tempo_show();
 }
 
-void MainWindow::on_btnPreset2_pressed()
-{
+void MainWindow::on_btnPreset2_pressed() {
 	tempo_push(preset2);
 	tempo_show();
 }
 
-void MainWindow::on_btnPreset3_pressed()
-{
+void MainWindow::on_btnPreset3_pressed() {
 	tempo_push(preset3);
 	tempo_show();
 }
 
-void MainWindow::on_btnReset_pressed()
-{
-	pd.sendFloat(dest_beat, 0);
+void MainWindow::on_btnReset_pressed() {
+	lpd.sendFloat(dest_beat, 0);
 }
 
-void MainWindow::on_chkPause_stateChanged(int paused)
-{
-	if (paused) {
-		SDL_CloseAudioDevice(dev);
-	} else {
-		dev = SDL_OpenAudioDevice(NULL, 0, &have, nullptr, 0);
-		SDL_PauseAudioDevice(dev, 0);
-	}
+void MainWindow::on_chkPause_stateChanged(int paused) {
+	paused ? stopAudio() : startAudio();
 }
 
-void MainWindow::on_edtVolume_returnPressed()
-{
+void MainWindow::on_edtVolume_returnPressed() {
 	volume.val = ui->edtVolume->text().toFloat();
-	pd.sendFloat(dest_vol, volume.val);
+	lpd.sendFloat(dest_vol, volume.val);
 	ui->sldVolume->blockSignals(true);
 	ui->sldVolume->setValue(volume.tostep());
 	ui->sldVolume->blockSignals(false);
 	ui->edtVolume->setText(fmt(volume.val));
 }
 
-void MainWindow::on_edtTempo_returnPressed()
-{
+void MainWindow::on_edtTempo_returnPressed() {
 	real mpb = ui->edtTempo->text().toFloat();
 	tempo_push(mpb);
 	tempo_show();
 }
 
-void MainWindow::on_edtBPM_returnPressed()
-{
+void MainWindow::on_edtBPM_returnPressed() {
 	real bpm = ui->edtBPM->text().toFloat();
 	real mpb = 60000 / bpm;
 	tempo_push(mpb);
@@ -248,28 +236,24 @@ void MainWindow::on_edtBPM_returnPressed()
 	ui->edtBPM->setText(fmt(bpm));
 }
 
-void MainWindow::sldVolume_valueChanged(int step)
-{
+void MainWindow::sldVolume_valueChanged(int step) {
 	volume.val = (step > 0) ? volume.fromstep(step) : 0;
-	pd.sendFloat(dest_vol, volume.val);
+	lpd.sendFloat(dest_vol, volume.val);
 	ui->edtVolume->setText(fmt(volume.val));
 }
 
-void MainWindow::sldTempo_valueChanged(int step)
-{
+void MainWindow::sldTempo_valueChanged(int step) {
 	tempo.val = tempo.fromstep(step);
-	pd.sendFloat(dest_tempo, tempo.val);
+	lpd.sendFloat(dest_tempo, tempo.val);
 	tempo_show();
 }
 
-void MainWindow::spnAccent1_valueChanged(int i)
-{
-	pd.sendFloat(dest_accent1, i);
+void MainWindow::spnAccent1_valueChanged(int i) {
+	lpd.sendFloat(dest_accent1, i);
 	ui->spnAccent1->findChild<QLineEdit*>()->deselect();
 }
 
-void MainWindow::spnAccent2_valueChanged(int i)
-{
-	pd.sendFloat(dest_accent2, i);
+void MainWindow::spnAccent2_valueChanged(int i) {
+	lpd.sendFloat(dest_accent2, i);
 	ui->spnAccent2->findChild<QLineEdit*>()->deselect();
 }
