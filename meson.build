@@ -6,7 +6,7 @@ project('metronome', 'cpp'
 sdl2_dep = dependency('sdl2')
 json_dep = dependency('jsoncpp')
 
-libpd_dir = '/home/mike/z/libpd'
+libpd_dir = './libpd'
 libpd_include = [
 	  libpd_dir + '/libpd_wrapper'
 	, libpd_dir + '/libpd_wrapper/util'

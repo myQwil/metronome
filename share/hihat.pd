@@ -1,4 +1,4 @@
-#N canvas 200 460 460 400 14;
+#N canvas 200 460 460 400 16;
 #X declare -path pd;
 #X obj 40 270 *~;
 #X obj 60 340 dac~;
@@ -25,7 +25,7 @@
 #X connect 7 0 0 0;
 #X restore 110 300 pd vol;
 #X floatatom 40 100 0 0 0 0 - - - 0;
-#N canvas 560 520 360 350 velocity 0;
+#N canvas 560 520 380 350 velocity 0;
 #X obj 30 20 inlet;
 #X obj 30 80 mod 4;
 #X obj 30 50 f;
@@ -37,17 +37,17 @@
 #X obj 220 50 inlet;
 #X obj 30 270 @/ 1;
 #X floatatom 90 300 0 0 0 0 - - - 0;
-#X obj 230 110 % 4;
-#X obj 230 140 sel;
+#X obj 240 110 % 4;
+#X obj 240 140 sel;
 #X obj 30 140 sel;
 #X obj 30 200 unpack;
 #X obj 80 270 outlet;
 #X obj 100 200 pack;
-#X obj 230 200 unpack;
+#X obj 240 200 unpack;
 #X obj 100 170 sly 1.25 2.5 4;
-#X msg 280 170 12 3.5;
-#X msg 230 170 24 1;
-#X msg 30 170 1 48;
+#X msg 290 170 12 3.5;
+#X msg 240 170 24 1;
+#X msg 30 170 1 90;
 #X obj 90 20 inlet;
 #X connect 0 0 2 0;
 #X connect 1 0 3 0;
@@ -96,7 +96,7 @@
 #X obj 170 100 r \$0beat;
 #X obj 300 330 s \$0tempo;
 #X obj 120 170 r \$0accent1;
-#X obj 140 200 r \$0accent2;
+#X obj 150 200 r \$0accent2;
 #X obj 300 130 s \$0accent1;
 #X obj 300 230 s \$0accent2;
 #X obj 40 30 declare -path pd;

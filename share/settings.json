@@ -9,7 +9,7 @@
 	// "preset3": 750,
 
 	"volume": 0.35, // initial volume level (linear amplitude)
-	"patch": "2op.pd",
+	// "patch": "2op.pd",
 	// "tempo": {
 		// "min": 2000, // minimum value
 		// "max": 20,   // maximum value
