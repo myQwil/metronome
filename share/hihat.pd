@@ -47,7 +47,7 @@
 #X obj 100 170 sly 1.25 2.5 4;
 #X msg 290 170 12 3.5;
 #X msg 240 170 24 1;
-#X msg 30 170 1 90;
+#X msg 30 170 1 120;
 #X obj 90 20 inlet;
 #X connect 0 0 2 0;
 #X connect 1 0 3 0;

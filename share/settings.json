@@ -5,8 +5,8 @@
 	// there are 3 buttons for assigning tempo presets
 	// tempo is expressed in milliseconds per beat
 	// "preset1": 1000,
-	// "preset2": 875,
-	// "preset3": 750,
+	"preset2": 935.414346693,
+	"preset3": 875,
 
 	"volume": 0.35, // initial volume level (linear amplitude)
 	// "patch": "2op.pd",
