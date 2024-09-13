@@ -4,6 +4,7 @@
 #include <fstream>
 #include <QDir>
 #include <QStandardPaths>
+#include <QAction>
 
 enum {
 	  freq = 48000
@@ -144,6 +145,16 @@ MainWindow::MainWindow(QWidget *parent)
 	ui->spnAccent2->setValue(accent2);
 	connect(ui->spnAccent2, SIGNAL(valueChanged(int))
 		, this, SLOT(spnAccent2_valueChanged(int)), Qt::QueuedConnection);
+
+	QAction *ctrl_q = new QAction(this);
+	ctrl_q->setShortcut(Qt::Key_Q | Qt::CTRL);
+	connect(ctrl_q, SIGNAL(triggered()), this, SLOT(close()));
+	this->addAction(ctrl_q);
+
+	QAction *esc = new QAction(this);
+	esc->setShortcut(Qt::Key_Escape);
+	connect(esc, SIGNAL(triggered()), this, SLOT(close()));
+	this->addAction(esc);
 }
 
 MainWindow::~MainWindow() {
