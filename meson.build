@@ -34,4 +34,7 @@ exe = executable('metronome',
 	install : true,
 )
 
+install_data('Metronome.desktop',
+	install_dir: join_paths(get_option('datadir'), 'applications'))
+
 test('basic', exe)
